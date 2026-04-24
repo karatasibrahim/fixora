@@ -1,0 +1,182 @@
+{
+  "@@locale": "tr",
+
+  "appTitle": "Fixora",
+
+  "greetingMorning": "Günaydın",
+  "greetingAfternoon": "İyi günler",
+  "greetingEvening": "İyi akşamlar",
+
+  "alertCritical": "2 makine acil müdahale gerektiriyor.",
+
+  "sectionOverview": "Genel Bakış",
+  "statTotalMachines": "Toplam Makine",
+  "statActive": "Aktif",
+  "statWarnings": "Uyarılar",
+  "statCritical": "Kritik",
+  "btnAddMachine": "Makine Ekle",
+  "btnLogFailure": "Arıza Gir",
+  "sectionRecentFailures": "Son Arızalar",
+  "sectionMaintenanceDue": "Yaklaşan Bakımlar",
+  "seeAll": "Tümünü Gör",
+  "tooltipNotifications": "Bildirimler",
+
+  "pageMachines": "Makineler",
+  "tooltipFilter": "Filtrele",
+  "searchHint": "Makine ara…",
+  "filterAll": "Tümü",
+  "statusActive": "Aktif",
+  "statusWarning": "Uyarı",
+  "statusCritical": "Kritik",
+  "statusOffline": "Çevrimdışı",
+  "noMachinesFound": "Makine bulunamadı",
+  "tryDifferentFilter": "Farklı bir arama veya filtre deneyin",
+  "checkedAgo": "Kontrol: {time}",
+  "@checkedAgo": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+
+  "pageAddMachine": "Makine Ekle",
+  "save": "Kaydet",
+  "sectionBasicInfo": "Temel Bilgiler",
+  "fieldMachineName": "Makine Adı",
+  "hintMachineName": "örn. CNC Torna #1",
+  "fieldMachineType": "Makine Türü",
+  "fieldLocation": "Konum",
+  "hintLocation": "örn. Salon A · Hat 3",
+  "sectionSpecifications": "Teknik Özellikler",
+  "fieldManufacturer": "Üretici",
+  "hintManufacturer": "örn. Siemens",
+  "fieldModel": "Model / Seri No.",
+  "hintModel": "örn. S-7000-X",
+  "fieldInstallDate": "Kurulum Tarihi",
+  "hintSelectDate": "Tarih seçin",
+  "sectionNotes": "Notlar",
+  "hintNotes": "Ek notlar…",
+  "btnSaveMachine": "Makineyi Kaydet",
+  "validationRequired": "{field} zorunludur",
+  "@validationRequired": {
+    "placeholders": {
+      "field": { "type": "String" }
+    }
+  },
+  "successMachineAdded": "{name} başarıyla eklendi",
+  "@successMachineAdded": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "machineTypeCNC": "CNC",
+  "machineTypeHydraulic": "Hidrolik",
+  "machineTypeCompressor": "Kompresör",
+  "machineTypeConveyor": "Konveyör",
+  "machineTypePump": "Pompa",
+  "machineTypeMotor": "Motor",
+  "machineTypeHVAC": "HVAC",
+  "machineTypePress": "Pres",
+  "machineTypeOther": "Diğer",
+
+  "pageLogFailure": "Arıza Kaydı",
+  "fieldMachine": "Makine",
+  "hintSelectMachine": "Makine seçin",
+  "sectionFailureType": "Arıza Türü",
+  "failureTypeMechanical": "Mekanik",
+  "failureTypeElectrical": "Elektriksel",
+  "failureTypeHydraulic": "Hidrolik",
+  "failureTypeSoftware": "Yazılım",
+  "failureTypeStructural": "Yapısal",
+  "failureTypeOther": "Diğer",
+  "sectionSeverity": "Ciddiyet Derecesi",
+  "severityLow": "Düşük",
+  "severityMedium": "Orta",
+  "severityHigh": "Yüksek",
+  "severityCritical": "Kritik",
+  "sectionDescription": "Açıklama",
+  "hintDescription": "Ne olduğunu ve gözlemlenen belirtileri açıklayın…",
+  "reportedAt": "Kayıt Zamanı",
+  "reportedBy": "Kaydeden",
+  "btnSubmitFailure": "Arıza Raporunu Gönder",
+  "validationSelectMachine": "Lütfen bir makine seçin",
+  "successFailureLogged": "Arıza başarıyla kaydedildi",
+  "validationDescriptionRequired": "Lütfen arızayı açıklayın",
+
+  "pagePredictions": "Tahminler",
+  "tooltipAboutPredictions": "Tahminler hakkında",
+  "labelHealthScore": "Sağlık Puanı",
+  "labelNextService": "Sonraki Bakım",
+  "labelRiskLevel": "Risk Seviyesi",
+  "sectionHealthMetrics": "Sağlık Metrikleri",
+  "sectionRecommendations": "Öneriler",
+  "sectionAllMachines": "Tüm Makineler",
+  "riskLow": "Düşük",
+  "riskMedium": "Orta",
+  "riskHigh": "Yüksek",
+  "riskUnknown": "Bilinmiyor",
+
+  "pageProfile": "Profil",
+  "tooltipEditProfile": "Profili düzenle",
+  "jobTitle": "Bakım Mühendisi",
+  "rankSenior": "Kıdemli",
+  "statMachinesLabel": "Makine",
+  "statFailuresLabel": "Kayıtlı\nArıza",
+  "statAvgResponseLabel": "Ort.\nYanıt",
+  "settingNotifications": "Bildirimler",
+  "settingNotificationsSubtitle": "Uygulama, e-posta uyarıları",
+  "settingLanguage": "Dil",
+  "settingLanguageCurrent": "Türkçe",
+  "settingAppearance": "Görünüm",
+  "settingAppearanceSubtitle": "Açık tema",
+  "settingSecurity": "Güvenlik",
+  "settingSecuritySubtitle": "2FA aktif",
+  "settingExportData": "Veri Dışa Aktar",
+  "settingExportDataSubtitle": "CSV, PDF raporlar",
+  "settingHelpSupport": "Yardım & Destek",
+  "settingHelpSupportSubtitle": "Belgeler, bize ulaşın",
+  "btnLogOut": "Çıkış Yap",
+  "dialogLogOutTitle": "Çıkış Yap",
+  "dialogLogOutMessage": "Çıkış yapmak istediğinizden emin misiniz?",
+  "btnCancel": "İptal",
+
+  "navHome": "Ana Sayfa",
+  "navMachines": "Makineler",
+  "navPredictions": "Tahminler",
+  "navProfile": "Profil",
+
+  "dialogLanguageTitle": "Dil Seçin",
+  "langTurkish": "Türkçe",
+  "langEnglish": "İngilizce",
+
+  "pageMachineDetail": "Makine Detayı",
+  "sectionMachineInfo": "Makine Bilgisi",
+  "labelType": "Tür",
+  "labelLastChecked": "Son Kontrol",
+  "noFailuresFound": "Kayıtlı arıza yok",
+  "noMaintenanceFound": "Planlanmış bakım yok",
+  "timeSecondsAgo": "{n}sn önce",
+  "@timeSecondsAgo": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "timeMinutesAgo": "{n}dk önce",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "timeHoursAgo": "{n}sa önce",
+  "@timeHoursAgo": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "timeDaysAgo": "{n}g önce",
+  "@timeDaysAgo": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "btnViewPredictions": "Tahminlerde Gör"
+}
