@@ -889,6 +889,72 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Tahminlerde Gör'**
   String get btnViewPredictions;
+
+  /// No description provided for @pageAddMaintenance.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bakım Planla'**
+  String get pageAddMaintenance;
+
+  /// No description provided for @btnPlanMaintenance.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bakım Planla'**
+  String get btnPlanMaintenance;
+
+  /// No description provided for @btnSaveMaintenance.
+  ///
+  /// In tr, this message translates to:
+  /// **'Planı Kaydet'**
+  String get btnSaveMaintenance;
+
+  /// No description provided for @sectionMaintenanceTask.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bakım Görevi'**
+  String get sectionMaintenanceTask;
+
+  /// No description provided for @fieldMaintenanceTask.
+  ///
+  /// In tr, this message translates to:
+  /// **'Görev Açıklaması'**
+  String get fieldMaintenanceTask;
+
+  /// No description provided for @hintMaintenanceTask.
+  ///
+  /// In tr, this message translates to:
+  /// **'örn. Rulman değişimi, yağ değişimi, filtre temizliği…'**
+  String get hintMaintenanceTask;
+
+  /// No description provided for @fieldScheduledDate.
+  ///
+  /// In tr, this message translates to:
+  /// **'Planlanan Tarih'**
+  String get fieldScheduledDate;
+
+  /// No description provided for @hintScheduledDate.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tarih seçin'**
+  String get hintScheduledDate;
+
+  /// No description provided for @successMaintenancePlanned.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bakım planı oluşturuldu'**
+  String get successMaintenancePlanned;
+
+  /// No description provided for @validationTaskRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Görev açıklaması zorunludur'**
+  String get validationTaskRequired;
+
+  /// No description provided for @validationScheduledDateRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Lütfen bir tarih seçin'**
+  String get validationScheduledDateRequired;
 }
 
 class _AppLocalizationsDelegate

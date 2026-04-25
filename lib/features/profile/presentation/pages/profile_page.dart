@@ -1,66 +1,96 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/locale/locale_notifier.dart';
+import '../../../../core/providers/auth_provider.dart';
+import '../../../../core/services/auth_service.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../repairs/data/models/failure_model.dart';
+import '../../../repairs/data/models/machine_model.dart';
+import '../../../repairs/data/repositories/failure_repository.dart';
+import '../../../repairs/data/repositories/machine_repository.dart';
+import 'team_page.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final _machineRepo = MachineRepository();
+  final _failureRepo = FailureRepository();
+  bool _notificationsEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (mounted) {
+        setState(() =>
+            _notificationsEnabled = p.getBool('notifications_enabled') ?? true);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final top = MediaQuery.of(context).padding.top;
-
-    final stats = [
-      (l10n.statMachinesLabel, '48'),
-      (l10n.statFailuresLabel, '127'),
-      (l10n.statAvgResponseLabel, '1.4s'),
-    ];
+    final user = context.watch<AppAuthProvider>().user;
 
     final settings = [
+      if (user?.isManager == true)
+        (
+          Icons.group_rounded,
+          'Ekip',
+          'Şirket üyelerini görüntüle',
+          AppColors.primary,
+          _SettingAction.team,
+        ),
       (
         Icons.notifications_outlined,
         l10n.settingNotifications,
-        l10n.settingNotificationsSubtitle,
+        _notificationsEnabled ? 'Açık' : 'Kapalı',
         const Color(0xFF2563EB),
-        false,
+        _SettingAction.notifications,
       ),
       (
         Icons.language_rounded,
         l10n.settingLanguage,
         l10n.settingLanguageCurrent,
         const Color(0xFF16A34A),
-        true, // triggers language picker
+        _SettingAction.language,
       ),
       (
         Icons.dark_mode_outlined,
         l10n.settingAppearance,
-        l10n.settingAppearanceSubtitle,
+        switch (themeNotifier.mode) {
+          ThemeMode.dark => 'Koyu Tema',
+          ThemeMode.system => 'Sistem',
+          _ => 'Açık Tema',
+        },
         const Color(0xFF475569),
-        false,
+        _SettingAction.appearance,
       ),
       (
         Icons.security_rounded,
         l10n.settingSecurity,
-        l10n.settingSecuritySubtitle,
+        'Şifre Değiştir',
         const Color(0xFFF59E0B),
-        false,
-      ),
-      (
-        Icons.download_rounded,
-        l10n.settingExportData,
-        l10n.settingExportDataSubtitle,
-        const Color(0xFF2563EB),
-        false,
+        _SettingAction.security,
       ),
       (
         Icons.help_outline_rounded,
         l10n.settingHelpSupport,
         l10n.settingHelpSupportSubtitle,
-        const Color(0xFF475569),
-        false,
+        const Color(0xFF25D366),
+        _SettingAction.whatsapp,
       ),
     ];
 
@@ -69,13 +99,18 @@ class ProfilePage extends StatelessWidget {
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          _buildHeader(context, l10n, top),
+          _buildHeader(context, l10n, top, user?.name ?? '', user?.initials ?? '?',
+              user?.isManager == true ? 'Yönetici' : 'Çalışan'),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.pageHorizontal),
             child: Column(
               children: [
                 const SizedBox(height: AppSpacing.sm),
-                _buildStats(stats),
+                _buildStats(
+                  companyId: user?.companyId ?? '',
+                  uid: user?.uid ?? '',
+                  l10n: l10n,
+                ),
                 const SizedBox(height: AppSpacing.sectionGap),
                 _buildSettingsSection(context, l10n, settings),
                 const SizedBox(height: AppSpacing.itemGap),
@@ -89,7 +124,14 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, AppLocalizations l10n, double top) {
+  Widget _buildHeader(
+    BuildContext context,
+    AppLocalizations l10n,
+    double top,
+    String name,
+    String initials,
+    String roleLabel,
+  ) {
     return Container(
       color: AppColors.surface,
       padding: EdgeInsets.fromLTRB(
@@ -122,9 +164,9 @@ class ProfilePage extends StatelessWidget {
                   borderRadius: AppRadius.fullAll,
                 ),
                 alignment: Alignment.center,
-                child: const Text(
-                  'İK',
-                  style: TextStyle(
+                child: Text(
+                  initials,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -137,9 +179,9 @@ class ProfilePage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'İbrahim Karataş',
-                      style: TextStyle(
+                    Text(
+                      name,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -149,22 +191,7 @@ class ProfilePage extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(l10n.jobTitle, style: AppTextStyles.bodySm),
                     const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on_outlined, size: 12, color: AppColors.textTertiary),
-                        const SizedBox(width: 3),
-                        const Text(
-                          'İstanbul, TR',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 11,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        AppBadge(label: l10n.rankSenior, variant: BadgeVariant.primary),
-                      ],
-                    ),
+                    AppBadge(label: roleLabel, variant: BadgeVariant.primary),
                   ],
                 ),
               ),
@@ -175,30 +202,92 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStats(List<(String, String)> stats) {
+  Widget _buildStats({
+    required String companyId,
+    required String uid,
+    required AppLocalizations l10n,
+  }) {
+    final machineStream = companyId.isEmpty
+        ? Stream.value(<MachineModel>[])
+        : _machineRepo.watchMachines(companyId);
+
+    final failureStream = companyId.isEmpty
+        ? Stream.value(<FailureModel>[])
+        : _failureRepo.watchFailures(companyId);
+
     return AppCard(
       child: Row(
-        children: stats.asMap().entries.map((entry) {
-          final i = entry.key;
-          final (label, value) = entry.value;
-          return Expanded(
+        children: [
+          // Makine sayısı
+          Expanded(
             child: Row(
               children: [
                 Expanded(
-                  child: Column(
-                    children: [
-                      Text(value, style: AppTextStyles.stat),
-                      const SizedBox(height: 4),
-                      Text(label, style: AppTextStyles.caption, textAlign: TextAlign.center),
-                    ],
+                  child: StreamBuilder<List<MachineModel>>(
+                    stream: machineStream,
+                    builder: (_, snap) => _StatCell(
+                      value: snap.hasData ? '${snap.data!.length}' : '—',
+                      label: l10n.statMachinesLabel,
+                    ),
                   ),
                 ),
-                if (i < stats.length - 1)
-                  Container(width: 1, height: 40, color: AppColors.divider),
+                Container(width: 1, height: 40, color: AppColors.divider),
               ],
             ),
-          );
-        }).toList(),
+          ),
+          // Arıza sayısı (kullanıcının kendi kaydettiği)
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: StreamBuilder<List<FailureModel>>(
+                    stream: failureStream,
+                    builder: (_, snap) {
+                      final mine = snap.hasData
+                          ? snap.data!.where((f) => f.reportedBy == uid).length
+                          : null;
+                      return _StatCell(
+                        value: mine != null ? '$mine' : '—',
+                        label: l10n.statFailuresLabel,
+                      );
+                    },
+                  ),
+                ),
+                Container(width: 1, height: 40, color: AppColors.divider),
+              ],
+            ),
+          ),
+          // Ortalama yanıt: kullanıcının arızaları arasındaki ort. süre
+          Expanded(
+            child: StreamBuilder<List<FailureModel>>(
+              stream: failureStream,
+              builder: (_, snap) {
+                String value = '—';
+                if (snap.hasData) {
+                  final mine = snap.data!
+                      .where((f) => f.reportedBy == uid)
+                      .toList()
+                    ..sort((a, b) => a.reportedAt.compareTo(b.reportedAt));
+                  if (mine.length >= 2) {
+                    var totalHours = 0;
+                    for (int i = 1; i < mine.length; i++) {
+                      totalHours += mine[i]
+                          .reportedAt
+                          .difference(mine[i - 1].reportedAt)
+                          .inHours;
+                    }
+                    final avg = totalHours ~/ (mine.length - 1);
+                    value = avg < 24 ? '${avg}sa' : '${avg ~/ 24}g';
+                  }
+                }
+                return _StatCell(
+                  value: value,
+                  label: l10n.statAvgResponseLabel,
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -206,20 +295,32 @@ class ProfilePage extends StatelessWidget {
   Widget _buildSettingsSection(
     BuildContext context,
     AppLocalizations l10n,
-    List<(IconData, String, String, Color, bool)> settings,
+    List<(IconData, String, String, Color, _SettingAction)> settings,
   ) {
     return AppCard(
       padding: EdgeInsets.zero,
       child: Column(
         children: settings.asMap().entries.map((entry) {
           final i = entry.key;
-          final (icon, label, subtitle, color, isLanguage) = entry.value;
+          final (icon, label, subtitle, color, action) = entry.value;
 
           return Column(
             children: [
               ListTile(
                 onTap: () {
-                  if (isLanguage) _showLanguagePicker(context, l10n);
+                  switch (action) {
+                    case _SettingAction.language:
+                      _showLanguagePicker(context, l10n);
+                    case _SettingAction.team:
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TeamPage()),
+                      );
+                    case _SettingAction.whatsapp:
+                      _openWhatsApp();
+                    case _SettingAction.none:
+                      break;
+                  }
                 },
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.cardPadding,
@@ -243,7 +344,8 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
               if (i < settings.length - 1)
-                const Divider(height: 1, indent: 70, color: AppColors.divider),
+                const Divider(
+                    height: 1, indent: 70, color: AppColors.divider),
             ],
           );
         }).toList(),
@@ -268,7 +370,10 @@ class ProfilePage extends StatelessWidget {
               child: Text(l10n.btnCancel),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.read<AppAuthProvider>().signOut();
+              },
               child: Text(l10n.btnLogOut,
                   style: const TextStyle(color: AppColors.danger)),
             ),
@@ -276,6 +381,18 @@ class ProfilePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openWhatsApp() async {
+    final nativeUri = Uri.parse('whatsapp://send?phone=905343358496');
+    if (await canLaunchUrl(nativeUri)) {
+      await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    final webUri = Uri.parse('https://wa.me/905343358496');
+    if (await canLaunchUrl(webUri)) {
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    }
   }
 
   void _showLanguagePicker(BuildContext context, AppLocalizations l10n) {
@@ -301,7 +418,8 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageHorizontal),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.pageHorizontal),
                 child: Row(
                   children: [
                     Text(l10n.dialogLanguageTitle, style: AppTextStyles.h3),
@@ -312,7 +430,8 @@ class ProfilePage extends StatelessWidget {
               _LanguageOption(
                 flag: '🇹🇷',
                 label: l10n.langTurkish,
-                isSelected: localeNotifier.locale.languageCode == 'tr',
+                isSelected:
+                    localeNotifier.locale.languageCode == 'tr',
                 onTap: () {
                   localeNotifier.set(const Locale('tr'));
                   Navigator.pop(ctx);
@@ -321,7 +440,8 @@ class ProfilePage extends StatelessWidget {
               _LanguageOption(
                 flag: '🇬🇧',
                 label: l10n.langEnglish,
-                isSelected: localeNotifier.locale.languageCode == 'en',
+                isSelected:
+                    localeNotifier.locale.languageCode == 'en',
                 onTap: () {
                   localeNotifier.set(const Locale('en'));
                   Navigator.pop(ctx);
@@ -332,6 +452,26 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+enum _SettingAction { none, language, team, whatsapp, notifications, appearance, security }
+
+class _StatCell extends StatelessWidget {
+  const _StatCell({required this.value, required this.label});
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value, style: AppTextStyles.stat),
+        const SizedBox(height: 4),
+        Text(label,
+            style: AppTextStyles.caption, textAlign: TextAlign.center),
+      ],
     );
   }
 }
@@ -352,7 +492,8 @@ class _LanguageOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageHorizontal, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.pageHorizontal, vertical: 4),
       leading: Text(flag, style: const TextStyle(fontSize: 28)),
       title: Text(
         label,
@@ -361,7 +502,8 @@ class _LanguageOption extends StatelessWidget {
         ),
       ),
       trailing: isSelected
-          ? const Icon(Icons.check_rounded, color: AppColors.primary, size: 22)
+          ? const Icon(Icons.check_rounded,
+              color: AppColors.primary, size: 22)
           : null,
     );
   }

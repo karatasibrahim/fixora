@@ -178,5 +178,17 @@
       "n": { "type": "int" }
     }
   },
-  "btnViewPredictions": "Tahminlerde Gör"
+  "btnViewPredictions": "Tahminlerde Gör",
+
+  "pageAddMaintenance": "Bakım Planla",
+  "btnPlanMaintenance": "Bakım Planla",
+  "btnSaveMaintenance": "Planı Kaydet",
+  "sectionMaintenanceTask": "Bakım Görevi",
+  "fieldMaintenanceTask": "Görev Açıklaması",
+  "hintMaintenanceTask": "örn. Rulman değişimi, yağ değişimi, filtre temizliği…",
+  "fieldScheduledDate": "Planlanan Tarih",
+  "hintScheduledDate": "Tarih seçin",
+  "successMaintenancePlanned": "Bakım planı oluşturuldu",
+  "validationTaskRequired": "Görev açıklaması zorunludur",
+  "validationScheduledDateRequired": "Lütfen bir tarih seçin"
 }

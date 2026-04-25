@@ -64,10 +64,10 @@ class StatCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           Text(value, style: AppTextStyles.stat.copyWith(color: AppColors.textPrimary)),
           const SizedBox(height: 2),
-          Text(label, style: AppTextStyles.bodySm),
+          Text(label, style: AppTextStyles.bodySm, maxLines: 2, overflow: TextOverflow.ellipsis),
         ],
       ),
     );

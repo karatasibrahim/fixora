@@ -417,4 +417,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get btnViewPredictions => 'View in Predictions';
+
+  @override
+  String get pageAddMaintenance => 'Plan Maintenance';
+
+  @override
+  String get btnPlanMaintenance => 'Plan Maintenance';
+
+  @override
+  String get btnSaveMaintenance => 'Save Plan';
+
+  @override
+  String get sectionMaintenanceTask => 'Maintenance Task';
+
+  @override
+  String get fieldMaintenanceTask => 'Task Description';
+
+  @override
+  String get hintMaintenanceTask =>
+      'e.g. Bearing replacement, oil change, filter cleaning…';
+
+  @override
+  String get fieldScheduledDate => 'Scheduled Date';
+
+  @override
+  String get hintScheduledDate => 'Select date';
+
+  @override
+  String get successMaintenancePlanned => 'Maintenance plan created';
+
+  @override
+  String get validationTaskRequired => 'Task description is required';
+
+  @override
+  String get validationScheduledDateRequired => 'Please select a date';
 }

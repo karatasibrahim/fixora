@@ -418,4 +418,38 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get btnViewPredictions => 'Tahminlerde Gör';
+
+  @override
+  String get pageAddMaintenance => 'Bakım Planla';
+
+  @override
+  String get btnPlanMaintenance => 'Bakım Planla';
+
+  @override
+  String get btnSaveMaintenance => 'Planı Kaydet';
+
+  @override
+  String get sectionMaintenanceTask => 'Bakım Görevi';
+
+  @override
+  String get fieldMaintenanceTask => 'Görev Açıklaması';
+
+  @override
+  String get hintMaintenanceTask =>
+      'örn. Rulman değişimi, yağ değişimi, filtre temizliği…';
+
+  @override
+  String get fieldScheduledDate => 'Planlanan Tarih';
+
+  @override
+  String get hintScheduledDate => 'Tarih seçin';
+
+  @override
+  String get successMaintenancePlanned => 'Bakım planı oluşturuldu';
+
+  @override
+  String get validationTaskRequired => 'Görev açıklaması zorunludur';
+
+  @override
+  String get validationScheduledDateRequired => 'Lütfen bir tarih seçin';
 }

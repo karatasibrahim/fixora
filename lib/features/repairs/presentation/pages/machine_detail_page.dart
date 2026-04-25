@@ -1,58 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../data/models/failure_model.dart';
+import '../../data/models/machine_model.dart';
+import '../../data/models/maintenance_model.dart';
+import '../../data/repositories/failure_repository.dart';
+import 'add_maintenance_page.dart';
 import 'failure_entry_page.dart';
 
-const _failuresByMachine = {
-  'CNC Torna #1': [
-    {'type': 'Rulman Aşınması', 'severity': 'critical', 'sec': 7200},
-    {'type': 'Titreşim Anomalisi', 'severity': 'warning', 'sec': 86400},
-  ],
-  'Hidrolik Pres #3': [
-    {'type': 'Hidrolik Sızıntı', 'severity': 'warning', 'sec': 18000},
-  ],
-  'Hava Kompresörü A': [
-    {'type': 'Elektrik Arızası', 'severity': 'warning', 'sec': 86400},
-    {'type': 'Basınç Düşüşü', 'severity': 'critical', 'sec': 259200},
-  ],
-};
-
-const _maintenanceByMachine = {
-  'CNC Torna #1': [
-    {'task': 'Ana Mil Rulman Değişimi', 'due': 'Acil', 'overdue': true},
-  ],
-  'Konveyör Bant #2': [
-    {'task': 'Rutin Bant Gerginlik Kontrolü', 'due': 'Yarın', 'overdue': false},
-  ],
-  'Su Pompası #1': [
-    {'task': 'Yağ Değişimi', 'due': '3 gün gecikmiş', 'overdue': true},
-  ],
-  'Soğutma Kulesi': [
-    {'task': 'Filtre Temizliği', 'due': '7 gün içinde', 'overdue': false},
-  ],
-};
-
 class MachineDetailPage extends StatelessWidget {
-  const MachineDetailPage({super.key, required this.data});
-  final Map<String, dynamic> data;
+  const MachineDetailPage({super.key, required this.machine});
+  final MachineModel machine;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final name = data['name'] as String;
-    final status = data['status'] as String;
-    final health = data['health'] as double;
-    final lastCheckSec = data['lastCheckSec'] as int;
-    final statusColor = _statusColor(status);
-    final failures = _failuresByMachine[name] ?? [];
-    final maintenance = _maintenanceByMachine[name] ?? [];
+    final user = context.read<AppAuthProvider>().user;
+    final companyId = user?.companyId ?? '';
+    final isManager = user?.isManager ?? false;
+    final repo = FailureRepository();
+    final statusColor = _statusColor(machine.status);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(name),
+        title: Text(machine.name),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppColors.border),
@@ -62,32 +38,88 @@ class MachineDetailPage extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.pageHorizontal),
         children: [
           const SizedBox(height: AppSpacing.sm),
-          _buildStatusCard(l10n, status, health, statusColor, lastCheckSec),
+          _buildStatusCard(l10n, statusColor),
           const SizedBox(height: AppSpacing.itemGap),
           _buildInfoCard(l10n),
           const SizedBox(height: AppSpacing.sectionGap),
           SectionHeader(title: l10n.sectionRecentFailures),
           const SizedBox(height: AppSpacing.itemGap),
-          failures.isEmpty
-              ? _buildEmpty(l10n.noFailuresFound, Icons.check_circle_outline_rounded, AppColors.success)
-              : Column(
-                  children: failures.map((f) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.itemGap),
-                    child: _FailureItem(data: f, l10n: l10n),
-                  )).toList(),
-                ),
+          StreamBuilder<List<FailureModel>>(
+            stream: companyId.isEmpty
+                ? const Stream.empty()
+                : repo.watchFailures(companyId, machineId: machine.id),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting &&
+                  !snap.hasData) {
+                return const _LoadingCard();
+              }
+              final failures = snap.data ?? [];
+              if (failures.isEmpty) {
+                return _buildEmpty(
+                  l10n.noFailuresFound,
+                  Icons.check_circle_outline_rounded,
+                  AppColors.success,
+                );
+              }
+              return Column(
+                children: failures
+                    .map((f) => Padding(
+                          padding:
+                              const EdgeInsets.only(bottom: AppSpacing.itemGap),
+                          child: _FailureItem(failure: f, l10n: l10n),
+                        ))
+                    .toList(),
+              );
+            },
+          ),
           const SizedBox(height: AppSpacing.sectionGap),
           SectionHeader(title: l10n.sectionMaintenanceDue),
           const SizedBox(height: AppSpacing.itemGap),
-          maintenance.isEmpty
-              ? _buildEmpty(l10n.noMaintenanceFound, Icons.event_available_rounded, AppColors.primary)
-              : Column(
-                  children: maintenance.map((m) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.itemGap),
-                    child: _MaintenanceItem(data: m),
-                  )).toList(),
-                ),
+          StreamBuilder<List<MaintenanceModel>>(
+            stream: companyId.isEmpty
+                ? const Stream.empty()
+                : repo.watchMaintenance(companyId, machineId: machine.id),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting &&
+                  !snap.hasData) {
+                return const _LoadingCard();
+              }
+              final items = snap.data ?? [];
+              if (items.isEmpty) {
+                return _buildEmpty(
+                  l10n.noMaintenanceFound,
+                  Icons.event_available_rounded,
+                  AppColors.primary,
+                );
+              }
+              return Column(
+                children: items
+                    .map((m) => Padding(
+                          padding:
+                              const EdgeInsets.only(bottom: AppSpacing.itemGap),
+                          child: _MaintenanceItem(item: m),
+                        ))
+                    .toList(),
+              );
+            },
+          ),
           const SizedBox(height: AppSpacing.sectionGap),
+          if (isManager)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: AppButton(
+                label: l10n.btnPlanMaintenance,
+                icon: Icons.event_available_rounded,
+                expand: true,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        AddMaintenancePage(preselectedMachine: machine),
+                  ),
+                ),
+              ),
+            ),
           AppButton(
             label: l10n.btnLogFailure,
             icon: Icons.report_problem_outlined,
@@ -95,7 +127,10 @@ class MachineDetailPage extends StatelessWidget {
             expand: true,
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const FailureEntryPage()),
+              MaterialPageRoute(
+                builder: (_) =>
+                    FailureEntryPage(preselectedMachine: machine),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.huge),
@@ -104,13 +139,8 @@ class MachineDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusCard(
-    AppLocalizations l10n,
-    String status,
-    double health,
-    Color statusColor,
-    int lastCheckSec,
-  ) {
+  Widget _buildStatusCard(AppLocalizations l10n, Color statusColor) {
+    final health = machine.healthFraction;
     return AppCard(
       child: Row(
         children: [
@@ -135,10 +165,13 @@ class MachineDetailPage extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${(health * 100).round()}%',
+                      '${machine.healthScore}%',
                       style: AppTextStyles.h4.copyWith(color: statusColor),
                     ),
-                    Text(l10n.labelHealthScore, style: AppTextStyles.caption.copyWith(fontSize: 9)),
+                    Text(
+                      l10n.labelHealthScore,
+                      style: AppTextStyles.caption.copyWith(fontSize: 9),
+                    ),
                   ],
                 ),
               ],
@@ -149,18 +182,19 @@ class MachineDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _StatusBadgeLocal(status: status, l10n: l10n),
+                _StatusBadgeLocal(status: machine.status, l10n: l10n),
                 const SizedBox(height: AppSpacing.sm),
                 Row(
                   children: [
-                    const Icon(Icons.schedule_rounded, size: 14, color: AppColors.textTertiary),
+                    const Icon(Icons.schedule_rounded,
+                        size: 14, color: AppColors.textTertiary),
                     const SizedBox(width: 4),
                     Text(l10n.labelLastChecked, style: AppTextStyles.caption),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _formatTimeAgo(lastCheckSec, l10n),
+                  _formatTimeAgo(machine.createdAt, l10n),
                   style: AppTextStyles.h4,
                 ),
               ],
@@ -181,7 +215,7 @@ class MachineDetailPage extends StatelessWidget {
           _InfoRow(
             icon: Icons.category_outlined,
             label: l10n.labelType,
-            value: data['type'] as String,
+            value: machine.type,
           ),
           const SizedBox(height: AppSpacing.sm),
           const AppDivider(),
@@ -189,8 +223,28 @@ class MachineDetailPage extends StatelessWidget {
           _InfoRow(
             icon: Icons.location_on_outlined,
             label: l10n.fieldLocation,
-            value: data['location'] as String,
+            value: machine.location,
           ),
+          if (machine.manufacturer != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            const AppDivider(),
+            const SizedBox(height: AppSpacing.sm),
+            _InfoRow(
+              icon: Icons.business_outlined,
+              label: l10n.fieldManufacturer,
+              value: machine.manufacturer!,
+            ),
+          ],
+          if (machine.model != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            const AppDivider(),
+            const SizedBox(height: AppSpacing.sm),
+            _InfoRow(
+              icon: Icons.tag_rounded,
+              label: l10n.fieldModel,
+              value: machine.model!,
+            ),
+          ],
         ],
       ),
     );
@@ -203,8 +257,33 @@ class MachineDetailPage extends StatelessWidget {
         children: [
           Icon(icon, size: 36, color: color.withValues(alpha: 0.5)),
           const SizedBox(height: AppSpacing.sm),
-          Text(message, style: AppTextStyles.bodySm.copyWith(color: AppColors.textSecondary)),
+          Text(
+            message,
+            style: AppTextStyles.bodySm
+                .copyWith(color: AppColors.textSecondary),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _LoadingCard extends StatelessWidget {
+  const _LoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return const AppCard(
+      padding: EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.primary,
+          ),
+        ),
       ),
     );
   }
@@ -218,7 +297,7 @@ class _StatusBadgeLocal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, variant) = switch (status) {
-      'active' => (l10n.statusActive, BadgeVariant.success),
+      'normal' => (l10n.statusActive, BadgeVariant.success),
       'warning' => (l10n.statusWarning, BadgeVariant.warning),
       'critical' => (l10n.statusCritical, BadgeVariant.danger),
       _ => (l10n.statusOffline, BadgeVariant.neutral),
@@ -228,7 +307,8 @@ class _StatusBadgeLocal extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.label, required this.value});
+  const _InfoRow(
+      {required this.icon, required this.label, required this.value});
   final IconData icon;
   final String label;
   final String value;
@@ -248,16 +328,15 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _FailureItem extends StatelessWidget {
-  const _FailureItem({required this.data, required this.l10n});
-  final Map<String, dynamic> data;
+  const _FailureItem({required this.failure, required this.l10n});
+  final FailureModel failure;
   final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
-    final isCritical = data['severity'] == 'critical';
+    final isCritical = failure.severity == 'critical';
     final color = isCritical ? AppColors.danger : AppColors.warning;
     final variant = isCritical ? BadgeVariant.danger : BadgeVariant.warning;
-    final sec = data['sec'] as int;
 
     return AppCard(
       child: Row(
@@ -276,9 +355,10 @@ class _FailureItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(data['type'] as String, style: AppTextStyles.h4),
+                Text(failure.type, style: AppTextStyles.h4),
                 const SizedBox(height: 2),
-                Text(_formatTimeAgo(sec, l10n), style: AppTextStyles.caption),
+                Text(_formatTimeAgo(failure.reportedAt, l10n),
+                    style: AppTextStyles.caption),
               ],
             ),
           ),
@@ -294,13 +374,14 @@ class _FailureItem extends StatelessWidget {
 }
 
 class _MaintenanceItem extends StatelessWidget {
-  const _MaintenanceItem({required this.data});
-  final Map<String, dynamic> data;
+  const _MaintenanceItem({required this.item});
+  final MaintenanceModel item;
 
   @override
   Widget build(BuildContext context) {
-    final isOverdue = data['overdue'] as bool;
+    final isOverdue = item.isOverdue;
     final color = isOverdue ? AppColors.danger : AppColors.primary;
+    final dueLabel = _dueLabel(item.scheduledDate, isOverdue);
 
     return AppCard(
       child: Row(
@@ -312,14 +393,13 @@ class _MaintenanceItem extends StatelessWidget {
               color: color.withValues(alpha: 0.12),
               borderRadius: AppRadius.mdAll,
             ),
-            child: Icon(Icons.build_circle_outlined, color: color, size: 18),
+            child:
+                Icon(Icons.build_circle_outlined, color: color, size: 18),
           ),
           const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(data['task'] as String, style: AppTextStyles.h4),
-          ),
+          Expanded(child: Text(item.task, style: AppTextStyles.h4)),
           AppBadge(
-            label: data['due'] as String,
+            label: dueLabel,
             variant: isOverdue ? BadgeVariant.danger : BadgeVariant.primary,
           ),
         ],
@@ -329,15 +409,24 @@ class _MaintenanceItem extends StatelessWidget {
 }
 
 Color _statusColor(String status) => switch (status) {
-      'active' => AppColors.success,
+      'normal' => AppColors.success,
       'warning' => AppColors.warning,
       'critical' => AppColors.danger,
       _ => AppColors.textTertiary,
     };
 
-String _formatTimeAgo(int seconds, AppLocalizations l10n) {
-  if (seconds < 60) return l10n.timeSecondsAgo(seconds);
-  if (seconds < 3600) return l10n.timeMinutesAgo(seconds ~/ 60);
-  if (seconds < 86400) return l10n.timeHoursAgo(seconds ~/ 3600);
-  return l10n.timeDaysAgo(seconds ~/ 86400);
+String _formatTimeAgo(DateTime dt, AppLocalizations l10n) {
+  final diff = DateTime.now().difference(dt);
+  if (diff.inSeconds < 60) return l10n.timeSecondsAgo(diff.inSeconds);
+  if (diff.inMinutes < 60) return l10n.timeMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return l10n.timeHoursAgo(diff.inHours);
+  return l10n.timeDaysAgo(diff.inDays);
+}
+
+String _dueLabel(DateTime date, bool overdue) {
+  final diff = date.difference(DateTime.now());
+  if (overdue) return 'Gecikmiş';
+  if (diff.inHours < 24) return 'Bugün';
+  if (diff.inDays == 1) return 'Yarın';
+  return '${diff.inDays} gün içinde';
 }

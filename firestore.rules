@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuth() { return request.auth != null; }
+    function callerData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function sameCompany(cid) {
+      return isAuth() && callerData().companyId == cid;
+    }
+    function isManager() {
+      return isAuth() && callerData().role == 'manager';
+    }
+
+    match /users/{uid} {
+      allow read: if isAuth() && (request.auth.uid == uid ||
+                    resource.data.companyId == callerData().companyId);
+      allow create: if isAuth() && request.auth.uid == uid;
+      allow update: if isAuth() && (request.auth.uid == uid ||
+                    (isManager() && resource.data.companyId == callerData().companyId));
+      allow delete: if false;
+    }
+
+    match /companies/{companyId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth() && resource.data.ownerId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /machines/{machineId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow create: if isManager() &&
+                    request.resource.data.companyId == callerData().companyId;
+      allow update, delete: if isManager() &&
+                    resource.data.companyId == callerData().companyId;
+    }
+
+    match /failures/{failureId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow create: if isAuth() &&
+                    request.resource.data.companyId == callerData().companyId &&
+                    request.resource.data.reportedBy == request.auth.uid;
+      allow update, delete: if isManager() &&
+                    resource.data.companyId == callerData().companyId;
+    }
+
+    match /maintenance/{maintenanceId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow create: if isManager() &&
+                    request.resource.data.companyId == callerData().companyId;
+      allow update, delete: if isManager() &&
+                    resource.data.companyId == callerData().companyId;
+    }
+  }
+}

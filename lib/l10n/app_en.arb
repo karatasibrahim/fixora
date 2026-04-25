@@ -163,5 +163,17 @@
       "n": { "type": "int" }
     }
   },
-  "btnViewPredictions": "View in Predictions"
+  "btnViewPredictions": "View in Predictions",
+
+  "pageAddMaintenance": "Plan Maintenance",
+  "btnPlanMaintenance": "Plan Maintenance",
+  "btnSaveMaintenance": "Save Plan",
+  "sectionMaintenanceTask": "Maintenance Task",
+  "fieldMaintenanceTask": "Task Description",
+  "hintMaintenanceTask": "e.g. Bearing replacement, oil change, filter cleaning…",
+  "fieldScheduledDate": "Scheduled Date",
+  "hintScheduledDate": "Select date",
+  "successMaintenancePlanned": "Maintenance plan created",
+  "validationTaskRequired": "Task description is required",
+  "validationScheduledDateRequired": "Please select a date"
 }

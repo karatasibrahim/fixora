@@ -1,84 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
-
-const _machineHealth = [
-  {
-    'name': 'CNC Torna #1',
-    'type': 'CNC',
-    'health': 32,
-    'status': 'critical',
-    'risk': '3 gün içinde rulman arızası yüksek riski',
-    'nextMaintenance': 'Acil',
-    'recommendations': [
-      'Ana iş mili yatağını değiştirin',
-      'Yağlama sistemini kontrol edin',
-      'Tahrik kayışı gerginliğini inceleyin',
-    ],
-    'metrics': [
-      {'label': 'Titreşim', 'value': 'Yüksek', 'status': 'critical'},
-      {'label': 'Sıcaklık', 'value': '94°C', 'status': 'warning'},
-      {'label': 'Gürültü', 'value': 'Anormal', 'status': 'critical'},
-      {'label': 'Yağ Basıncı', 'value': 'Normal', 'status': 'active'},
-    ],
-  },
-  {
-    'name': 'Hidrolik Pres #3',
-    'type': 'Hydraulic',
-    'health': 61,
-    'status': 'warning',
-    'risk': 'Hidrolik conta bozunması tespit edildi',
-    'nextMaintenance': '2 hafta içinde',
-    'recommendations': [
-      'Hidrolik contaları inceleyin',
-      'Sıvı seviyesi ve kalitesini kontrol edin',
-      'Basınç farkını izleyin',
-    ],
-    'metrics': [
-      {'label': 'Basınç', 'value': '180 bar', 'status': 'warning'},
-      {'label': 'Sıcaklık', 'value': '68°C', 'status': 'active'},
-      {'label': 'Titreşim', 'value': 'Normal', 'status': 'active'},
-      {'label': 'Sıvı Seviyesi', 'value': 'Düşük', 'status': 'warning'},
-    ],
-  },
-  {
-    'name': 'Konveyör Bant #2',
-    'type': 'Conveyor',
-    'health': 87,
-    'status': 'active',
-    'risk': 'Anlık risk tespit edilmedi',
-    'nextMaintenance': '45 gün içinde',
-    'recommendations': [
-      'Rutin bant gerginlik kontrolü',
-      'Tahrik zincirini yağlayın',
-    ],
-    'metrics': [
-      {'label': 'Bant Gerginliği', 'value': 'Normal', 'status': 'active'},
-      {'label': 'Hız', 'value': '1.2 m/s', 'status': 'active'},
-      {'label': 'Titreşim', 'value': 'Düşük', 'status': 'active'},
-      {'label': 'Motor Sıcaklığı', 'value': '42°C', 'status': 'active'},
-    ],
-  },
-  {
-    'name': 'Elektrik Motoru #5',
-    'type': 'Motor',
-    'health': 93,
-    'status': 'active',
-    'risk': 'Normal parametreler dahilinde çalışıyor',
-    'nextMaintenance': '60 gün içinde',
-    'recommendations': [
-      'Standart dönemsel bakım',
-    ],
-    'metrics': [
-      {'label': 'Akım Çekimi', 'value': 'Normal', 'status': 'active'},
-      {'label': 'Sıcaklık', 'value': '38°C', 'status': 'active'},
-      {'label': 'Titreşim', 'value': 'Minimal', 'status': 'active'},
-      {'label': 'İzolasyon', 'value': 'İyi', 'status': 'active'},
-    ],
-  },
-];
+import '../../data/models/machine_model.dart';
+import '../../data/repositories/machine_repository.dart';
 
 class PredictionPage extends StatefulWidget {
   const PredictionPage({super.key});
@@ -88,59 +16,80 @@ class PredictionPage extends StatefulWidget {
 }
 
 class _PredictionPageState extends State<PredictionPage> {
+  final _repo = MachineRepository();
   int _selected = 0;
-
-  Map<String, dynamic> get _current =>
-      _machineHealth[_selected] as Map<String, dynamic>;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final top = MediaQuery.of(context).padding.top;
+    final companyId =
+        context.watch<AppAuthProvider>().user?.companyId ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _buildHeader(l10n, top)),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.pageHorizontal,
-              vertical: AppSpacing.pageVertical,
+      body: companyId.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : StreamBuilder<List<MachineModel>>(
+              stream: _repo.watchMachines(companyId),
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting &&
+                    !snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final machines = snap.data ?? [];
+                if (machines.isEmpty) {
+                  return _buildEmpty(l10n, top);
+                }
+                final idx =
+                    _selected < machines.length ? _selected : 0;
+                final current = machines[idx];
+
+                return CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(child: _buildHeader(l10n, top)),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.pageHorizontal,
+                        vertical: AppSpacing.pageVertical,
+                      ),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          _buildHealthGauge(l10n, current),
+                          const SizedBox(height: AppSpacing.itemGap),
+                          _buildRiskBanner(current),
+                          const SizedBox(height: AppSpacing.sectionGap),
+                          SectionHeader(title: l10n.sectionHealthMetrics),
+                          const SizedBox(height: AppSpacing.itemGap),
+                          _buildMetrics(current),
+                          const SizedBox(height: AppSpacing.sectionGap),
+                          SectionHeader(title: l10n.sectionRecommendations),
+                          const SizedBox(height: AppSpacing.itemGap),
+                          _buildRecommendations(current),
+                          const SizedBox(height: AppSpacing.sectionGap),
+                          SectionHeader(title: l10n.sectionAllMachines),
+                          const SizedBox(height: AppSpacing.itemGap),
+                          _buildMachineList(l10n, machines, idx),
+                          const SizedBox(height: AppSpacing.huge),
+                        ]),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildHealthGauge(l10n),
-                const SizedBox(height: AppSpacing.itemGap),
-                _buildRiskBanner(),
-                const SizedBox(height: AppSpacing.sectionGap),
-                SectionHeader(title: l10n.sectionHealthMetrics),
-                const SizedBox(height: AppSpacing.itemGap),
-                _buildMetrics(),
-                const SizedBox(height: AppSpacing.sectionGap),
-                SectionHeader(title: l10n.sectionRecommendations),
-                const SizedBox(height: AppSpacing.itemGap),
-                _buildRecommendations(),
-                const SizedBox(height: AppSpacing.sectionGap),
-                SectionHeader(title: l10n.sectionAllMachines),
-                const SizedBox(height: AppSpacing.itemGap),
-                _buildMachineList(l10n),
-                const SizedBox(height: AppSpacing.huge),
-              ]),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
   Widget _buildHeader(AppLocalizations l10n, double top) {
     return Container(
       color: AppColors.surface,
-      padding: EdgeInsets.fromLTRB(AppSpacing.pageHorizontal, top + 16, AppSpacing.pageHorizontal, 16),
+      padding: EdgeInsets.fromLTRB(
+          AppSpacing.pageHorizontal, top + 16, AppSpacing.pageHorizontal, 16),
       child: Row(
         children: [
-          Expanded(child: Text(l10n.pagePredictions, style: AppTextStyles.h2)),
+          Expanded(
+              child: Text(l10n.pagePredictions, style: AppTextStyles.h2)),
           AppIconButton(
             icon: Icons.info_outline_rounded,
             onTap: () {},
@@ -151,17 +100,38 @@ class _PredictionPageState extends State<PredictionPage> {
     );
   }
 
-  Widget _buildHealthGauge(AppLocalizations l10n) {
-    final health = _current['health'] as int;
-    final status = _current['status'] as String;
-    final color = _healthColor(health);
+  Widget _buildEmpty(AppLocalizations l10n, double top) {
+    return Column(
+      children: [
+        _buildHeader(l10n, top),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.precision_manufacturing_rounded,
+                    size: 48, color: AppColors.textTertiary),
+                const SizedBox(height: AppSpacing.md),
+                Text('Henüz makine eklenmedi.',
+                    style: AppTextStyles.h4
+                        .copyWith(color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHealthGauge(AppLocalizations l10n, MachineModel m) {
+    final color = _healthColor(m.healthScore);
 
     return AppCard(
       child: Column(
         children: [
-          Text(_current['name'] as String, style: AppTextStyles.h3),
+          Text(m.name, style: AppTextStyles.h3),
           const SizedBox(height: 4),
-          Text(_current['type'] as String, style: AppTextStyles.bodySm),
+          Text(m.type, style: AppTextStyles.bodySm),
           const SizedBox(height: AppSpacing.xl),
           SizedBox(
             width: 160,
@@ -173,7 +143,7 @@ class _PredictionPageState extends State<PredictionPage> {
                   width: 160,
                   height: 160,
                   child: CircularProgressIndicator(
-                    value: health / 100,
+                    value: m.healthFraction,
                     backgroundColor: AppColors.border,
                     valueColor: AlwaysStoppedAnimation<Color>(color),
                     strokeWidth: 14,
@@ -183,7 +153,10 @@ class _PredictionPageState extends State<PredictionPage> {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('$health%', style: AppTextStyles.statLg.copyWith(color: color)),
+                    Text(
+                      '${m.healthScore}%',
+                      style: AppTextStyles.statLg.copyWith(color: color),
+                    ),
                     const SizedBox(height: 2),
                     Text(l10n.labelHealthScore, style: AppTextStyles.caption),
                   ],
@@ -197,14 +170,14 @@ class _PredictionPageState extends State<PredictionPage> {
             children: [
               _GaugeStat(
                 label: l10n.labelNextService,
-                value: _current['nextMaintenance'] as String,
+                value: _nextServiceLabel(m),
                 icon: Icons.build_circle_outlined,
                 color: AppColors.primary,
               ),
               Container(width: 1, height: 40, color: AppColors.divider),
               _GaugeStat(
                 label: l10n.labelRiskLevel,
-                value: _riskLabel(status, l10n),
+                value: _riskLabel(m.status, l10n),
                 icon: Icons.shield_outlined,
                 color: color,
               ),
@@ -215,12 +188,11 @@ class _PredictionPageState extends State<PredictionPage> {
     );
   }
 
-  Widget _buildRiskBanner() {
-    final health = _current['health'] as int;
-    final color = _healthColor(health);
-    final bgColor = health >= 80
+  Widget _buildRiskBanner(MachineModel m) {
+    final color = _healthColor(m.healthScore);
+    final bgColor = m.healthScore >= 80
         ? AppColors.successLight
-        : health >= 60
+        : m.healthScore >= 60
             ? AppColors.warningLight
             : AppColors.dangerLight;
 
@@ -234,7 +206,7 @@ class _PredictionPageState extends State<PredictionPage> {
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
-              _current['risk'] as String,
+              _riskDescription(m),
               style: AppTextStyles.bodySm.copyWith(
                 color: color,
                 fontWeight: FontWeight.w600,
@@ -246,9 +218,8 @@ class _PredictionPageState extends State<PredictionPage> {
     );
   }
 
-  Widget _buildMetrics() {
-    final metrics = (_current['metrics'] as List).cast<Map<String, dynamic>>();
-
+  Widget _buildMetrics(MachineModel m) {
+    final metrics = _syntheticMetrics(m);
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -256,9 +227,8 @@ class _PredictionPageState extends State<PredictionPage> {
       crossAxisSpacing: AppSpacing.itemGap,
       mainAxisSpacing: AppSpacing.itemGap,
       childAspectRatio: 2.0,
-      children: metrics.map((m) {
-        final mStatus = m['status'] as String;
-        final color = _statusColor(mStatus);
+      children: metrics.map((metric) {
+        final color = _statusColor(metric.$3);
         return AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
@@ -266,7 +236,8 @@ class _PredictionPageState extends State<PredictionPage> {
               Container(
                 width: 8,
                 height: 8,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                decoration:
+                    BoxDecoration(color: color, shape: BoxShape.circle),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -274,11 +245,13 @@ class _PredictionPageState extends State<PredictionPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(m['label'] as String, style: AppTextStyles.caption),
+                    Text(metric.$1, style: AppTextStyles.caption),
                     const SizedBox(height: 2),
-                    Text(m['value'] as String,
-                        style: AppTextStyles.h4.copyWith(fontSize: 14),
-                        overflow: TextOverflow.ellipsis),
+                    Text(
+                      metric.$2,
+                      style: AppTextStyles.h4.copyWith(fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
@@ -289,9 +262,8 @@ class _PredictionPageState extends State<PredictionPage> {
     );
   }
 
-  Widget _buildRecommendations() {
-    final recs = (_current['recommendations'] as List).cast<String>();
-
+  Widget _buildRecommendations(MachineModel m) {
+    final recs = _recommendations(m);
     return AppCard(
       child: Column(
         children: recs.asMap().entries.map((entry) {
@@ -334,14 +306,14 @@ class _PredictionPageState extends State<PredictionPage> {
     );
   }
 
-  Widget _buildMachineList(AppLocalizations l10n) {
+  Widget _buildMachineList(
+      AppLocalizations l10n, List<MachineModel> machines, int selectedIdx) {
     return Column(
-      children: _machineHealth.asMap().entries.map((entry) {
+      children: machines.asMap().entries.map((entry) {
         final i = entry.key;
-        final m = entry.value as Map<String, dynamic>;
-        final health = m['health'] as int;
-        final color = _healthColor(health);
-        final isSelected = _selected == i;
+        final m = entry.value;
+        final color = _healthColor(m.healthScore);
+        final isSelected = selectedIdx == i;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.itemGap),
@@ -362,14 +334,15 @@ class _PredictionPageState extends State<PredictionPage> {
                       color: color.withValues(alpha: 0.12),
                       borderRadius: AppRadius.mdAll,
                     ),
-                    child: Icon(_machineIcon(m['type'] as String), color: color, size: 20),
+                    child:
+                        Icon(_machineIcon(m.type), color: color, size: 20),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(m['name'] as String, style: AppTextStyles.h4),
+                        Text(m.name, style: AppTextStyles.h4),
                         const SizedBox(height: 6),
                         Row(
                           children: [
@@ -377,16 +350,17 @@ class _PredictionPageState extends State<PredictionPage> {
                               child: ClipRRect(
                                 borderRadius: AppRadius.fullAll,
                                 child: LinearProgressIndicator(
-                                  value: health / 100,
+                                  value: m.healthFraction,
                                   minHeight: 4,
                                   backgroundColor: AppColors.border,
-                                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(color),
                                 ),
                               ),
                             ),
                             const SizedBox(width: AppSpacing.sm),
                             Text(
-                              '$health%',
+                              '${m.healthScore}%',
                               style: AppTextStyles.caption.copyWith(
                                 color: color,
                                 fontWeight: FontWeight.w700,
@@ -400,7 +374,9 @@ class _PredictionPageState extends State<PredictionPage> {
                   const SizedBox(width: AppSpacing.sm),
                   Icon(
                     Icons.chevron_right_rounded,
-                    color: isSelected ? AppColors.primary : AppColors.textTertiary,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textTertiary,
                   ),
                 ],
               ),
@@ -438,18 +414,64 @@ class _GaugeStat extends StatelessWidget {
   }
 }
 
+// Rule-based synthetic metrics derived from healthScore + status
+List<(String, String, String)> _syntheticMetrics(MachineModel m) {
+  final h = m.healthScore;
+  return [
+    ('Titreşim', h >= 80 ? 'Normal' : h >= 60 ? 'Orta' : 'Yüksek',
+        h >= 80 ? 'normal' : h >= 60 ? 'warning' : 'critical'),
+    ('Sıcaklık', '${(40 + (100 - h) * 0.6).round()}°C',
+        h >= 80 ? 'normal' : h >= 60 ? 'warning' : 'critical'),
+    ('Gürültü', h >= 80 ? 'Minimal' : h >= 60 ? 'Orta' : 'Anormal',
+        h >= 80 ? 'normal' : h >= 60 ? 'warning' : 'critical'),
+    ('Yağ Basıncı', h >= 60 ? 'Normal' : 'Düşük',
+        h >= 60 ? 'normal' : 'warning'),
+  ];
+}
+
+List<String> _recommendations(MachineModel m) {
+  if (m.healthScore < 40) {
+    return [
+      'Acil bakım planlaması yapın',
+      'Ana bileşenleri inceleyin ve gerekirse değiştirin',
+      'Yağlama sistemini kontrol edin',
+    ];
+  }
+  if (m.healthScore < 70) {
+    return [
+      'Yakın dönemde bakım planlayın',
+      'Titreşim ve sıcaklık değerlerini izleyin',
+      'Wear parçalarını kontrol edin',
+    ];
+  }
+  return ['Standart dönemsel bakımı sürdürün'];
+}
+
+String _riskDescription(MachineModel m) {
+  if (m.healthScore < 40) return 'Kritik arıza riski yüksek — acil müdahale gerekli';
+  if (m.healthScore < 70) return 'Performans düşüşü tespit edildi — yakında bakım önerilir';
+  return 'Normal parametreler dahilinde çalışıyor';
+}
+
+String _nextServiceLabel(MachineModel m) {
+  if (m.healthScore < 40) return 'Acil';
+  if (m.healthScore < 60) return '1 hafta içinde';
+  if (m.healthScore < 80) return '1 ay içinde';
+  return '3 ay içinde';
+}
+
 Color _healthColor(int health) =>
     health >= 80 ? AppColors.success : health >= 60 ? AppColors.warning : AppColors.danger;
 
 Color _statusColor(String status) => switch (status) {
-      'active' => AppColors.success,
+      'normal' => AppColors.success,
       'warning' => AppColors.warning,
       'critical' => AppColors.danger,
       _ => AppColors.textTertiary,
     };
 
 String _riskLabel(String status, AppLocalizations l10n) => switch (status) {
-      'active' => l10n.riskLow,
+      'normal' => l10n.riskLow,
       'warning' => l10n.riskMedium,
       'critical' => l10n.riskHigh,
       _ => l10n.riskUnknown,

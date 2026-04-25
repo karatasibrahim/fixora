@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../data/models/machine_model.dart';
+import '../../data/repositories/machine_repository.dart';
 
 class AddMachinePage extends StatefulWidget {
   const AddMachinePage({super.key});
@@ -12,6 +16,7 @@ class AddMachinePage extends StatefulWidget {
 }
 
 class _AddMachinePageState extends State<AddMachinePage> {
+  final _repo = MachineRepository();
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
@@ -20,6 +25,7 @@ class _AddMachinePageState extends State<AddMachinePage> {
   final _notesCtrl = TextEditingController();
   int _typeIndex = 0;
   DateTime? _installDate;
+  bool _submitting = false;
 
   List<String> _typeLabels(AppLocalizations l10n) => [
         l10n.machineTypeCNC,
@@ -59,9 +65,32 @@ class _AddMachinePageState extends State<AddMachinePage> {
     if (picked != null) setState(() => _installDate = picked);
   }
 
-  void _submit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      final l10n = AppLocalizations.of(context)!;
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final l10n = AppLocalizations.of(context)!;
+    final user = context.read<AppAuthProvider>().user!;
+    final typeLabels = _typeLabels(l10n);
+
+    setState(() => _submitting = true);
+    try {
+      await _repo.addMachine(MachineModel(
+        id: '',
+        companyId: user.companyId,
+        name: _nameCtrl.text.trim(),
+        type: typeLabels[_typeIndex],
+        location: _locationCtrl.text.trim(),
+        status: 'normal',
+        healthScore: 100,
+        manufacturer: _manufacturerCtrl.text.trim().isEmpty
+            ? null
+            : _manufacturerCtrl.text.trim(),
+        model: _modelCtrl.text.trim().isEmpty ? null : _modelCtrl.text.trim(),
+        installDate: _installDate,
+        notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+        createdAt: DateTime.now(),
+        createdBy: user.uid,
+      ));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.successMachineAdded(_nameCtrl.text)),
@@ -71,6 +100,18 @@ class _AddMachinePageState extends State<AddMachinePage> {
         ),
       );
       Navigator.pop(context);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Kayıt sırasında bir hata oluştu.'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -89,7 +130,7 @@ class _AddMachinePageState extends State<AddMachinePage> {
         ),
         actions: [
           TextButton(
-            onPressed: _submit,
+            onPressed: _submitting ? null : _submit,
             child: Text(
               l10n.save,
               style: AppTextStyles.button.copyWith(color: AppColors.primary),
@@ -150,7 +191,8 @@ class _AddMachinePageState extends State<AddMachinePage> {
             AppButton(
               label: l10n.btnSaveMachine,
               icon: Icons.check_rounded,
-              onPressed: _submit,
+              isLoading: _submitting,
+              onPressed: _submitting ? null : _submit,
               expand: true,
               size: AppButtonSize.lg,
             ),
