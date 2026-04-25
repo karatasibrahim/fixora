@@ -99,8 +99,10 @@ class _ProfilePageState extends State<ProfilePage> {
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          _buildHeader(context, l10n, top, user?.name ?? '', user?.initials ?? '?',
-              user?.isManager == true ? 'Yönetici' : 'Çalışan'),
+          _buildHeader(context, l10n, top, user?.name ?? '',
+              user?.initials ?? '?',
+              user?.isManager == true ? 'Yönetici' : 'Çalışan',
+              user?.jobTitle ?? ''),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.pageHorizontal),
             child: Column(
@@ -131,6 +133,7 @@ class _ProfilePageState extends State<ProfilePage> {
     String name,
     String initials,
     String roleLabel,
+    String jobTitle,
   ) {
     return Container(
       color: AppColors.surface,
@@ -148,7 +151,7 @@ class _ProfilePageState extends State<ProfilePage> {
               Text(l10n.pageProfile, style: AppTextStyles.h2),
               AppIconButton(
                 icon: Icons.edit_outlined,
-                onTap: () {},
+                onTap: () => _showEditProfileSheet(context),
                 tooltip: l10n.tooltipEditProfile,
               ),
             ],
@@ -189,7 +192,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(l10n.jobTitle, style: AppTextStyles.bodySm),
+                    Text(
+                      jobTitle.isNotEmpty ? jobTitle : l10n.jobTitle,
+                      style: AppTextStyles.bodySm,
+                    ),
                     const SizedBox(height: 6),
                     AppBadge(label: roleLabel, variant: BadgeVariant.primary),
                   ],
@@ -318,6 +324,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       );
                     case _SettingAction.whatsapp:
                       _openWhatsApp();
+                    case _SettingAction.notifications:
+                      _showNotificationsSheet(context);
+                    case _SettingAction.appearance:
+                      _showAppearanceSheet(context);
+                    case _SettingAction.security:
+                      _showSecuritySheet(context);
                     case _SettingAction.none:
                       break;
                   }
@@ -394,6 +406,329 @@ class _ProfilePageState extends State<ProfilePage> {
       await launchUrl(webUri, mode: LaunchMode.externalApplication);
     }
   }
+
+  void _showEditProfileSheet(BuildContext context) {
+    final user = context.read<AppAuthProvider>().user;
+    final nameCtrl = TextEditingController(text: user?.name ?? '');
+    final jobCtrl = TextEditingController(text: user?.jobTitle ?? '');
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.pageHorizontal,
+              0,
+              AppSpacing.pageHorizontal,
+              AppSpacing.xl,
+            ),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(child: _sheetHandle()),
+                  Text('Profili Düzenle', style: AppTextStyles.h3),
+                  const SizedBox(height: AppSpacing.lg),
+                  TextFormField(
+                    controller: nameCtrl,
+                    keyboardType: TextInputType.name,
+                    textCapitalization: TextCapitalization.words,
+                    style: AppTextStyles.body,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Ad Soyad gerekli' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Ad Soyad',
+                      prefixIcon: Icon(Icons.person_outline_rounded, size: 20),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: jobCtrl,
+                    keyboardType: TextInputType.text,
+                    textCapitalization: TextCapitalization.words,
+                    style: AppTextStyles.body,
+                    decoration: const InputDecoration(
+                      labelText: 'Görev / Unvan',
+                      hintText: 'örn. Bakım Mühendisi',
+                      prefixIcon: Icon(Icons.work_outline_rounded, size: 20),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Consumer<AppAuthProvider>(
+                    builder: (ctx2, auth, _) => AppButton(
+                      label: 'Kaydet',
+                      icon: Icons.check_rounded,
+                      iconTrailing: true,
+                      expand: true,
+                      isLoading: auth.loading,
+                      onPressed: auth.loading
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              final ok = await auth.updateProfile(
+                                name: nameCtrl.text,
+                                jobTitle: jobCtrl.text,
+                              );
+                              if (ctx2.mounted) {
+                                Navigator.pop(ctx2);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(ok
+                                        ? 'Profil güncellendi.'
+                                        : auth.error ?? 'Hata oluştu.'),
+                                    backgroundColor: ok
+                                        ? AppColors.success
+                                        : AppColors.danger,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: AppRadius.mdAll),
+                                  ),
+                                );
+                              }
+                            },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showNotificationsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _sheetHandle(),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.pageHorizontal),
+                child: Row(children: [
+                  Text('Bildirimler', style: AppTextStyles.h3),
+                ]),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SwitchListTile(
+                value: _notificationsEnabled,
+                activeThumbColor: AppColors.primary,
+                title: const Text('Uygulama bildirimleri'),
+                subtitle: Text(_notificationsEnabled ? 'Açık' : 'Kapalı'),
+                onChanged: (val) async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('notifications_enabled', val);
+                  setState(() => _notificationsEnabled = val);
+                  setSheet(() {});
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAppearanceSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => ListenableBuilder(
+        listenable: themeNotifier,
+        builder: (_, child) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _sheetHandle(),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.pageHorizontal),
+                child: Row(children: [
+                  Text('Görünüm', style: AppTextStyles.h3),
+                ]),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _ThemeOption(
+                icon: Icons.light_mode_rounded,
+                label: 'Açık Tema',
+                selected: themeNotifier.mode == ThemeMode.light,
+                onTap: () {
+                  themeNotifier.set(ThemeMode.light);
+                  Navigator.pop(ctx);
+                },
+              ),
+              _ThemeOption(
+                icon: Icons.dark_mode_rounded,
+                label: 'Koyu Tema',
+                selected: themeNotifier.mode == ThemeMode.dark,
+                onTap: () {
+                  themeNotifier.set(ThemeMode.dark);
+                  Navigator.pop(ctx);
+                },
+              ),
+              _ThemeOption(
+                icon: Icons.brightness_auto_rounded,
+                label: 'Sistem',
+                selected: themeNotifier.mode == ThemeMode.system,
+                onTap: () {
+                  themeNotifier.set(ThemeMode.system);
+                  Navigator.pop(ctx);
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSecuritySheet(BuildContext context) {
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var loading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.pageHorizontal, 0,
+                  AppSpacing.pageHorizontal, AppSpacing.xl),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(child: _sheetHandle()),
+                    Text('Şifre Değiştir', style: AppTextStyles.h3),
+                    const SizedBox(height: AppSpacing.lg),
+                    _PasswordField(
+                      ctrl: currentCtrl,
+                      label: 'Mevcut Şifre',
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Gerekli' : null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _PasswordField(
+                      ctrl: newCtrl,
+                      label: 'Yeni Şifre',
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Gerekli';
+                        if (v.length < 6) return 'En az 6 karakter';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _PasswordField(
+                      ctrl: confirmCtrl,
+                      label: 'Yeni Şifre (Tekrar)',
+                      validator: (v) => v != newCtrl.text
+                          ? 'Şifreler eşleşmiyor'
+                          : null,
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    AppButton(
+                      label: 'Şifreyi Güncelle',
+                      icon: Icons.lock_reset_rounded,
+                      iconTrailing: true,
+                      expand: true,
+                      isLoading: loading,
+                      onPressed: loading
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              setSheet(() => loading = true);
+                              try {
+                                await AuthService().changePassword(
+                                  currentPassword: currentCtrl.text,
+                                  newPassword: newCtrl.text,
+                                );
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content:
+                                          const Text('Şifre güncellendi.'),
+                                      backgroundColor: AppColors.success,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: AppRadius.mdAll),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                setSheet(() => loading = false);
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          e.toString().contains('wrong-password') ||
+                                                  e.toString().contains('invalid-credential')
+                                              ? 'Mevcut şifre hatalı.'
+                                              : 'Bir hata oluştu.'),
+                                      backgroundColor: AppColors.danger,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: AppRadius.mdAll),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetHandle() => Container(
+        width: 36,
+        height: 4,
+        margin: const EdgeInsets.only(top: 12, bottom: 20),
+        decoration: const BoxDecoration(
+          color: AppColors.border,
+          borderRadius: AppRadius.fullAll,
+        ),
+      );
 
   void _showLanguagePicker(BuildContext context, AppLocalizations l10n) {
     showModalBottomSheet(
@@ -505,6 +840,81 @@ class _LanguageOption extends StatelessWidget {
           ? const Icon(Icons.check_rounded,
               color: AppColors.primary, size: 22)
           : null,
+    );
+  }
+}
+
+class _ThemeOption extends StatelessWidget {
+  const _ThemeOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.pageHorizontal, vertical: 4),
+      leading: Icon(icon,
+          color: selected ? AppColors.primary : AppColors.textSecondary,
+          size: 22),
+      title: Text(
+        label,
+        style: AppTextStyles.h4.copyWith(
+          color: selected ? AppColors.primary : AppColors.textPrimary,
+        ),
+      ),
+      trailing: selected
+          ? const Icon(Icons.check_rounded,
+              color: AppColors.primary, size: 22)
+          : null,
+    );
+  }
+}
+
+class _PasswordField extends StatefulWidget {
+  const _PasswordField({
+    required this.ctrl,
+    required this.label,
+    required this.validator,
+  });
+  final TextEditingController ctrl;
+  final String label;
+  final String? Function(String?) validator;
+
+  @override
+  State<_PasswordField> createState() => _PasswordFieldState();
+}
+
+class _PasswordFieldState extends State<_PasswordField> {
+  bool _obscure = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: widget.ctrl,
+      obscureText: _obscure,
+      style: AppTextStyles.body,
+      validator: widget.validator,
+      decoration: InputDecoration(
+        labelText: widget.label,
+        prefixIcon: const Icon(Icons.lock_outlined, size: 20),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            size: 20,
+            color: AppColors.textTertiary,
+          ),
+          onPressed: () => setState(() => _obscure = !_obscure),
+        ),
+      ),
     );
   }
 }

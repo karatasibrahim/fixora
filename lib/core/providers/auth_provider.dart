@@ -161,6 +161,27 @@ class AppAuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateProfile({
+    required String name,
+    required String jobTitle,
+  }) async {
+    if (_user == null) return false;
+    _setLoading(true);
+    try {
+      await _firestoreService.updateUser(_user!.uid, {
+        'name': name.trim(),
+        'jobTitle': jobTitle.trim(),
+      });
+      _user = _user!.copyWith(name: name.trim(), jobTitle: jobTitle.trim());
+      _setLoading(false);
+      return true;
+    } on Exception catch (e) {
+      _setError(_friendlyError(e.toString()));
+      _setLoading(false);
+      return false;
+    }
+  }
+
   Future<bool> sendPasswordReset(String email) async {
     _setLoading(true);
     _setError(null);

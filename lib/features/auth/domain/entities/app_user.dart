@@ -4,6 +4,7 @@ class AppUser {
   final String email;
   final String role; // 'manager' | 'worker'
   final String companyId;
+  final String jobTitle;
   final DateTime createdAt;
 
   const AppUser({
@@ -13,6 +14,7 @@ class AppUser {
     required this.role,
     required this.companyId,
     required this.createdAt,
+    this.jobTitle = '',
   });
 
   bool get isManager => role == 'manager';
@@ -24,4 +26,14 @@ class AppUser {
     }
     return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
+
+  AppUser copyWith({String? name, String? jobTitle}) => AppUser(
+        uid: uid,
+        name: name ?? this.name,
+        email: email,
+        role: role,
+        companyId: companyId,
+        jobTitle: jobTitle ?? this.jobTitle,
+        createdAt: createdAt,
+      );
 }

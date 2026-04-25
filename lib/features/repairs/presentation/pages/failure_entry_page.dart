@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/providers/auth_provider.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -37,12 +40,15 @@ class FailureEntryPage extends StatefulWidget {
 class _FailureEntryPageState extends State<FailureEntryPage> {
   final _repo = FailureRepository();
   final _machineRepo = MachineRepository();
+  final _storageService = StorageService();
+  final _picker = ImagePicker();
   MachineModel? _selectedMachine;
   int _failureTypeIndex = 0;
   int _severityIndex = 1;
   final _descCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _submitting = false;
+  final List<File> _images = [];
 
   @override
   void initState() {
@@ -54,6 +60,59 @@ class _FailureEntryPageState extends State<FailureEntryPage> {
   void dispose() {
     _descCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picked = await _picker.pickImage(
+      source: source,
+      imageQuality: 80,
+      maxWidth: 1920,
+    );
+    if (picked != null && _images.length < 5) {
+      setState(() => _images.add(File(picked.path)));
+    }
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: AppRadius.fullAll,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Galeriden Seç'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Fotoğraf Çek'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -77,6 +136,14 @@ class _FailureEntryPageState extends State<FailureEntryPage> {
     final failureTypes = _failureTypeKeys(l10n);
 
     try {
+      final imageUrls = _images.isEmpty
+          ? <String>[]
+          : await _storageService.uploadFailureImages(
+              companyId: user.companyId,
+              uid: user.uid,
+              images: _images,
+            );
+
       await _repo.addFailure(FailureModel(
         id: '',
         companyId: user.companyId,
@@ -88,6 +155,7 @@ class _FailureEntryPageState extends State<FailureEntryPage> {
         reportedBy: user.uid,
         reportedByName: user.name,
         reportedAt: DateTime.now(),
+        imageUrls: imageUrls,
       ));
 
       if (!mounted) return;
@@ -261,6 +329,83 @@ class _FailureEntryPageState extends State<FailureEntryPage> {
                     ? l10n.validationDescriptionRequired
                     : null,
                 decoration: InputDecoration(hintText: l10n.hintDescription),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.itemGap),
+            _buildSection(
+              title: 'Fotoğraflar (max 5)',
+              child: Column(
+                children: [
+                  if (_images.isNotEmpty)
+                    SizedBox(
+                      height: 90,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _images.length,
+                        separatorBuilder: (context, i) =>
+                            const SizedBox(width: AppSpacing.sm),
+                        itemBuilder: (_, i) => Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: AppRadius.mdAll,
+                              child: Image.file(
+                                _images[i],
+                                width: 90,
+                                height: 90,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () =>
+                                    setState(() => _images.removeAt(i)),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: AppRadius.fullAll,
+                                  ),
+                                  padding: const EdgeInsets.all(3),
+                                  child: const Icon(Icons.close,
+                                      size: 14, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (_images.isNotEmpty)
+                    const SizedBox(height: AppSpacing.md),
+                  if (_images.length < 5)
+                    GestureDetector(
+                      onTap: _showImageSourceSheet,
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: AppRadius.mdAll,
+                          border: Border.all(
+                              color: AppColors.border,
+                              style: BorderStyle.solid),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.add_a_photo_outlined,
+                                color: AppColors.textSecondary, size: 20),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              'Fotoğraf Ekle',
+                              style: AppTextStyles.body.copyWith(
+                                  color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: AppSpacing.itemGap),

@@ -18,6 +18,9 @@ class FirestoreService {
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchUser(String uid) =>
       _db.collection('users').doc(uid).snapshots();
 
+  Future<void> updateUser(String uid, Map<String, dynamic> data) =>
+      _db.collection('users').doc(uid).update(data);
+
   WriteBatch batch() => _db.batch();
 
   DocumentReference<Map<String, dynamic>> newCompanyRef() =>

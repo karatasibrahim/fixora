@@ -339,35 +339,95 @@ class _FailureItem extends StatelessWidget {
     final variant = isCritical ? BadgeVariant.danger : BadgeVariant.warning;
 
     return AppCard(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: AppRadius.mdAll,
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: AppRadius.mdAll,
+                ),
+                child: Icon(Icons.build_rounded, color: color, size: 18),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(failure.type, style: AppTextStyles.h4),
+                    const SizedBox(height: 2),
+                    Text(_formatTimeAgo(failure.reportedAt, l10n),
+                        style: AppTextStyles.caption),
+                  ],
+                ),
+              ),
+              AppBadge(
+                label: isCritical ? l10n.statusCritical : l10n.statusWarning,
+                variant: variant,
+                dot: true,
+              ),
+            ],
+          ),
+          if (failure.imageUrls.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 80,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: failure.imageUrls.length,
+                separatorBuilder: (_, i) => const SizedBox(width: AppSpacing.sm),
+                itemBuilder: (ctx, i) => GestureDetector(
+                  onTap: () => _openFullScreen(ctx, failure.imageUrls, i),
+                  child: ClipRRect(
+                    borderRadius: AppRadius.mdAll,
+                    child: Image.network(
+                      failure.imageUrls[i],
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (_, child, progress) => progress == null
+                          ? child
+                          : Container(
+                              width: 80,
+                              height: 80,
+                              color: AppColors.surfaceVariant,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary),
+                                ),
+                              ),
+                            ),
+                      errorBuilder: (_, err, st) => Container(
+                        width: 80,
+                        height: 80,
+                        color: AppColors.surfaceVariant,
+                        child: const Icon(Icons.broken_image_outlined,
+                            color: AppColors.textTertiary, size: 24),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-            child: Icon(Icons.build_rounded, color: color, size: 18),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(failure.type, style: AppTextStyles.h4),
-                const SizedBox(height: 2),
-                Text(_formatTimeAgo(failure.reportedAt, l10n),
-                    style: AppTextStyles.caption),
-              ],
-            ),
-          ),
-          AppBadge(
-            label: isCritical ? l10n.statusCritical : l10n.statusWarning,
-            variant: variant,
-            dot: true,
-          ),
+          ],
         ],
+      ),
+    );
+  }
+
+  void _openFullScreen(BuildContext context, List<String> urls, int initial) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _FullScreenImagePage(urls: urls, initial: initial),
       ),
     );
   }
@@ -429,4 +489,67 @@ String _dueLabel(DateTime date, bool overdue) {
   if (diff.inHours < 24) return 'Bugün';
   if (diff.inDays == 1) return 'Yarın';
   return '${diff.inDays} gün içinde';
+}
+
+class _FullScreenImagePage extends StatefulWidget {
+  const _FullScreenImagePage({required this.urls, required this.initial});
+  final List<String> urls;
+  final int initial;
+
+  @override
+  State<_FullScreenImagePage> createState() => _FullScreenImagePageState();
+}
+
+class _FullScreenImagePageState extends State<_FullScreenImagePage> {
+  late final PageController _ctrl;
+  late int _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initial;
+    _ctrl = PageController(initialPage: widget.initial);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          '${_current + 1} / ${widget.urls.length}',
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
+      ),
+      body: PageView.builder(
+        controller: _ctrl,
+        itemCount: widget.urls.length,
+        onPageChanged: (i) => setState(() => _current = i),
+        itemBuilder: (_, i) => InteractiveViewer(
+          child: Center(
+            child: Image.network(
+              widget.urls[i],
+              fit: BoxFit.contain,
+              loadingBuilder: (_, child, progress) => progress == null
+                  ? child
+                  : const Center(
+                      child: CircularProgressIndicator(color: Colors.white)),
+              errorBuilder: (_, err, st) => const Center(
+                child: Icon(Icons.broken_image_outlined,
+                    color: Colors.white54, size: 48),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

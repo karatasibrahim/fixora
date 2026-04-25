@@ -9,6 +9,7 @@ class UserModel extends AppUser {
     required super.role,
     required super.companyId,
     required super.createdAt,
+    super.jobTitle = '',
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String uid) {
@@ -18,6 +19,7 @@ class UserModel extends AppUser {
       email: map['email'] as String? ?? '',
       role: map['role'] as String? ?? 'worker',
       companyId: map['companyId'] as String? ?? '',
+      jobTitle: map['jobTitle'] as String? ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -27,6 +29,7 @@ class UserModel extends AppUser {
         'email': email,
         'role': role,
         'companyId': companyId,
+        'jobTitle': jobTitle,
         'createdAt': Timestamp.fromDate(createdAt),
       };
 }

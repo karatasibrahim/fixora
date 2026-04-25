@@ -42,6 +42,8 @@ dependencies:
   shared_preferences: ^2.3.2
   provider: ^6.1.2
   url_launcher: ^6.3.1
+  firebase_storage: ^12.3.2
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -53,6 +55,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "lib/icons/fixora.png"
+  remove_alpha_ios: true
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "lib/icons/fixora.png"
   min_sdk_android: 21

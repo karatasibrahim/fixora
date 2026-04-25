@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.fixora.app</string>
+	<string>com.ibrahimkaratas.fixora</string>
 	<key>PROJECT_ID</key>
 	<string>fixora-data</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:277994886008:ios:ba493dda1d2716b6f26e8d</string>
+	<string>1:277994886008:ios:b54e4c6d31a3dfc3f26e8d</string>
 </dict>
 </plist>

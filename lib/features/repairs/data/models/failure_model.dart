@@ -11,6 +11,7 @@ class FailureModel {
   final String reportedBy;
   final String reportedByName;
   final DateTime reportedAt;
+  final List<String> imageUrls;
 
   const FailureModel({
     required this.id,
@@ -23,6 +24,7 @@ class FailureModel {
     required this.reportedBy,
     required this.reportedByName,
     required this.reportedAt,
+    this.imageUrls = const [],
   });
 
   factory FailureModel.fromDoc(DocumentSnapshot doc) {
@@ -39,6 +41,7 @@ class FailureModel {
       reportedByName: d['reportedByName'] as String? ?? '',
       reportedAt:
           (d['reportedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      imageUrls: List<String>.from(d['imageUrls'] as List? ?? []),
     );
   }
 
@@ -52,5 +55,6 @@ class FailureModel {
         'reportedBy': reportedBy,
         'reportedByName': reportedByName,
         'reportedAt': Timestamp.fromDate(reportedAt),
+        'imageUrls': imageUrls,
       };
 }
